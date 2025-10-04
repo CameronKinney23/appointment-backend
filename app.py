@@ -1,3 +1,4 @@
+import os
 import sqlite3
 from flask import Flask, request
 import smtplib
@@ -10,7 +11,7 @@ def send_email_notification(name, email, date, time, notes):
     msg = EmailMessage()
     msg['Subject'] = 'New Appointment Received'
     msg['From'] = 'camkin123@gmail.com'  # Replace with your Gmail address
-    msg['To'] = 'ofwgkta666247@gmail.com'    # Replace with your Gmail address or recipient
+    msg['To'] = 'ofwgkta666247@gmail.com'  # Replace with your recipient address
     msg.set_content(f'''
     New appointment booked:
 
@@ -24,7 +25,7 @@ def send_email_notification(name, email, date, time, notes):
     # Gmail SMTP configuration
     with smtplib.SMTP('smtp.gmail.com', 587) as smtp:
         smtp.starttls()
-        smtp.login('camkin123@gmail.com', 'kihmpojpzmuykcgj'  # Replace with your Gmail and app password
+        smtp.login('camkin123@gmail.com', 'kihmpojpzmuykcgj')  # Replace with your Gmail and app password
         smtp.send_message(msg)
 
 # Submit route
@@ -47,6 +48,8 @@ def submit():
 
     return 'Appointment submitted successfully! See you soon!'
 
+# Run the app with dynamic port for Render
 if __name__ == '__main__':
-    app.run(debug=True)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
 
