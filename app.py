@@ -1,5 +1,5 @@
 import os
-import sqlite3
+import psycopg2
 from flask import Flask, request
 import requests
 from datetime import datetime
@@ -9,6 +9,7 @@ from dotenv import load_dotenv, find_dotenv
 load_dotenv(find_dotenv())
 SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY")
 FROM_EMAIL = os.getenv("EMAIL_ADDRESS")
+DATABASE_URL = os.getenv("DATABASE_URL")
 
 print(f"Loaded sender: {FROM_EMAIL}")  # Debug check
 
@@ -61,16 +62,33 @@ def submit():
     date = request.form['date']
     time = request.form['time']
     notes = request.form.get('notes', '')
-    timestamp = datetime.now().isoformat()
+    timestamp = datetime.utcnow().isoformat()
 
-    # Save to SQLite
-    conn = sqlite3.connect('appointments.db')
+    # Save to PostgreSQL
+    conn = psycopg2.connect(DATABASE_URL)
     cursor = conn.cursor()
+
+    # Create table if it doesn't exist
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS appointments (
+            id SERIAL PRIMARY KEY,
+            name TEXT,
+            email TEXT,
+            date TEXT,
+            time TEXT,
+            notes TEXT,
+            timestamp TEXT
+        )
+    ''')
+
+    # Insert appointment
     cursor.execute('''
         INSERT INTO appointments (name, email, date, time, notes, timestamp)
-        VALUES (?, ?, ?, ?, ?, ?)
+        VALUES (%s, %s, %s, %s, %s, %s)
     ''', (name, customer_email, date, time, notes, timestamp))
+
     conn.commit()
+    cursor.close()
     conn.close()
 
     # Send emails
