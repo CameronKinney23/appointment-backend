@@ -18,6 +18,11 @@ db = os.getenv("POSTGRES_DB")
 user = os.getenv("POSTGRES_USER")
 password = os.getenv("POSTGRES_PASSWORD")
 
+# Debug prints to confirm environment variables
+print("Loaded DB config:", host, port, db, user, password)
+print("Loaded email config:", FROM_EMAIL, SENDGRID_API_KEY)
+
+
 print(f"Loaded sender: {FROM_EMAIL}")  # Debug check
 
 app = Flask(__name__)
