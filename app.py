@@ -1,12 +1,16 @@
+
+
+
 import os
 import psycopg2
 from flask import Flask, request
 import requests
 from datetime import datetime
-from dotenv import load_dotenv, find_dotenv
+from dotenv import load_dotenv
 
-# Load environment variables
-load_dotenv(find_dotenv())
+# Load environment variables (local dev only—Render uses env group)
+load_dotenv()
+
 SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY")
 FROM_EMAIL = os.getenv("EMAIL_ADDRESS")
 DATABASE_URL = os.getenv("DATABASE_URL")
@@ -64,8 +68,13 @@ def submit():
     notes = request.form.get('notes', '')
     timestamp = datetime.utcnow().isoformat()
 
-    # Save to PostgreSQL
-    conn = psycopg2.connect(DATABASE_URL)
+    # Connect to PostgreSQL
+    try:
+        conn = psycopg2.connect(DATABASE_URL)
+    except Exception as e:
+        print(f"Database connection failed: {e}")
+        return 'Internal server error', 500
+
     cursor = conn.cursor()
 
     # Create table if it doesn't exist
@@ -101,7 +110,3 @@ def submit():
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
-
-
-
-
