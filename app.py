@@ -1,6 +1,3 @@
-
-
-
 import os
 import psycopg2
 from flask import Flask, request
@@ -13,7 +10,13 @@ load_dotenv()
 
 SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY")
 FROM_EMAIL = os.getenv("EMAIL_ADDRESS")
-DATABASE_URL = os.getenv("DATABASE_URL")
+
+# PostgreSQL connection variables
+host = os.getenv("POSTGRES_HOST")
+port = os.getenv("POSTGRES_PORT")
+db = os.getenv("POSTGRES_DB")
+user = os.getenv("POSTGRES_USER")
+password = os.getenv("POSTGRES_PASSWORD")
 
 print(f"Loaded sender: {FROM_EMAIL}")  # Debug check
 
@@ -70,7 +73,13 @@ def submit():
 
     # Connect to PostgreSQL
     try:
-        conn = psycopg2.connect(DATABASE_URL)
+        conn = psycopg2.connect(
+            host=host,
+            port=port,
+            dbname=db,
+            user=user,
+            password=password
+        )
     except Exception as e:
         print(f"Database connection failed: {e}")
         return 'Internal server error', 500
@@ -110,3 +119,4 @@ def submit():
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
+
