@@ -13,7 +13,7 @@ FROM_EMAIL = os.getenv("EMAIL_ADDRESS")
 
 # PostgreSQL connection variables
 host = os.getenv("POSTGRES_HOST")
-port = os.getenv("POSTGRES_PORT")
+port = int(os.getenv("POSTGRES_PORT"))
 db = os.getenv("POSTGRES_DB")
 user = os.getenv("POSTGRES_USER")
 password = os.getenv("POSTGRES_PASSWORD")
