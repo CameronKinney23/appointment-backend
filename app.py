@@ -21,8 +21,12 @@ def health():
 # --- Email: send to BOTH business + customer ---
 def send_email(name, email, date, time, notes):
     SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY")
-    FROM_EMAIL = os.getenv("FROM_EMAIL")                      # must be verified in SendGrid
+    FROM_EMAIL = os.getenv("FROM_EMAIL")  # must be verified in SendGrid
     COMPANY_EMAIL = os.getenv("COMPANY_EMAIL", "camkin123@gmail.com")
+
+    if not FROM_EMAIL:
+        app.logger.error("FROM_EMAIL is not set")
+        return 0
 
     subject = "New Appointment Submission"
     body = (
@@ -44,12 +48,16 @@ def send_email(name, email, date, time, notes):
     r = requests.post(
         "https://api.sendgrid.com/v3/mail/send",
         headers={"Authorization": f"Bearer {SENDGRID_API_KEY}", "Content-Type": "application/json"},
-        json=data
+        json=data,
+        timeout=10
     )
-    if r.status_code != 202:
+    if r.status_code == 202:
+        app.logger.info("SendGrid accepted email (202)")
+    else:
         app.logger.error(f"SendGrid error {r.status_code}: {r.text}")
     return r.status_code
 
+# --- Appointment submission route ---
 @app.post("/submit")
 def submit_appointment():
     try:
@@ -92,3 +100,11 @@ def submit_appointment():
     except Exception as e:
         app.logger.exception("Error submitting appointment")
         return jsonify({"error": "Internal server error"}), 500
+
+# --- Isolated email test route ---
+@app.get("/mail-test")
+def mail_test():
+    status = send_email("MailTest", "your.email@example.com", "2025-10-12", "14:30", "hello")
+    return jsonify({"sendgrid_status": status}), (200 if status == 202 else 500)
+
+
