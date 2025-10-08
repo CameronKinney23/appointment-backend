@@ -3,13 +3,15 @@ import os
 import psycopg2
 import requests
 from datetime import datetime
+from dotenv import load_dotenv
 
+load_dotenv()
 app = Flask(__name__)
 
 # Email notification to business only
 def send_business_notification(name, email, date, time, notes):
     SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY")
-    FROM_EMAIL = os.getenv("EMAIL_ADDRESS")
+    FROM_EMAIL = os.getenv("FROM_EMAIL")
     TO_EMAIL = "camkin123@gmail.com"
 
     subject = "New Appointment Submission"
@@ -95,13 +97,14 @@ def submit_appointment():
         # Send email to business only
         send_business_notification(name, customer_email, date, time, notes)
 
-        return 'Appointment submitted successfully! See you soon!'
+        return jsonify({"message": "Appointment submitted successfully! See you soon!"})
 
     except Exception as e:
         print("Error submitting appointment:", str(e))
-        return 'Internal server error', 500
+        return jsonify({"error": "Internal server error"}), 500
 
 # Start Flask app
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
+
