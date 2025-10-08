@@ -13,7 +13,7 @@ DB_URL = os.getenv("DATABASE_URL", "")
 if DB_URL.startswith("postgres://"):
     DB_URL = DB_URL.replace("postgres://", "postgresql://", 1)
 
-# --- Health route ---
+# --- Health route (fast and independent of DB) ---
 @app.get("/")
 def health():
     return "ok", 200
@@ -37,6 +37,7 @@ def send_email(name, email, date, time, notes):
             "subject": subject
         }],
         "from": {"email": FROM_EMAIL},
+        "reply_to": {"email": email},
         "content": [{"type": "text/plain", "value": body}]
     }
 
@@ -48,26 +49,6 @@ def send_email(name, email, date, time, notes):
     if r.status_code != 202:
         app.logger.error(f"SendGrid error {r.status_code}: {r.text}")
     return r.status_code
-
-# --- Create table once at startup ---
-def init_db():
-    if not DB_URL:
-        app.logger.warning("DATABASE_URL not set; DB will fail on first use.")
-        return
-    with psycopg2.connect(DB_URL, sslmode="require") as conn:
-        with conn.cursor() as cur:
-            cur.execute("""
-                CREATE TABLE IF NOT EXISTS appointments (
-                    id SERIAL PRIMARY KEY,
-                    name TEXT NOT NULL,
-                    email TEXT NOT NULL,
-                    date TEXT NOT NULL,
-                    time TEXT NOT NULL,
-                    notes TEXT,
-                    created_at TIMESTAMPTZ DEFAULT NOW()
-                );
-            """)
-init_db()
 
 @app.post("/submit")
 def submit_appointment():
@@ -84,9 +65,20 @@ def submit_appointment():
             if not v:
                 return jsonify({"error": f"Missing field: {k}"}), 400
 
-        # insert appointment
-        with psycopg2.connect(DB_URL, sslmode="require") as conn:
+        # Lazy DB work: short timeout, create table if needed, then insert
+        with psycopg2.connect(DB_URL, sslmode="require", connect_timeout=5) as conn:
             with conn.cursor() as cur:
+                cur.execute("""
+                    CREATE TABLE IF NOT EXISTS appointments (
+                        id SERIAL PRIMARY KEY,
+                        name TEXT NOT NULL,
+                        email TEXT NOT NULL,
+                        date TEXT NOT NULL,
+                        time TEXT NOT NULL,
+                        notes TEXT,
+                        created_at TIMESTAMPTZ DEFAULT NOW()
+                    );
+                """)
                 cur.execute("""
                     INSERT INTO appointments (name, email, date, time, notes)
                     VALUES (%s, %s, %s, %s, %s)
