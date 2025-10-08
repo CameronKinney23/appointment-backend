@@ -9,7 +9,7 @@ load_dotenv()
 app = Flask(__name__)
 
 # Email notification to business only
-def send_business_notification(name, email, date, time, notes):
+def send_email(name, email, date, time, notes):
     SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY")
     FROM_EMAIL = os.getenv("FROM_EMAIL")
     TO_EMAIL = "camkin123@gmail.com"
@@ -95,7 +95,7 @@ def submit_appointment():
         conn.close()
 
         # Send email to business only
-        send_business_notification(name, customer_email, date, time, notes)
+        send_email(name, customer_email, date, time, notes)
 
         return jsonify({"message": "Appointment submitted successfully! See you soon!"})
 
@@ -103,8 +103,4 @@ def submit_appointment():
         print("Error submitting appointment:", str(e))
         return jsonify({"error": "Internal server error"}), 500
 
-# Start Flask app
-if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
 
