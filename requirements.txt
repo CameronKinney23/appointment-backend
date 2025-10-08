@@ -1,5 +1,5 @@
-flask
+Flask
+gunicorn
+psycopg2-binary
 requests
 python-dotenv
-psycopg2-binary
-gunicorn

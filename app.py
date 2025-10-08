@@ -8,99 +8,95 @@ from dotenv import load_dotenv
 load_dotenv()
 app = Flask(__name__)
 
-# Email notification to business only
+# --- DB URL (Render Postgres) ---
+DB_URL = os.getenv("DATABASE_URL", "")
+if DB_URL.startswith("postgres://"):
+    DB_URL = DB_URL.replace("postgres://", "postgresql://", 1)
+
+# --- Health route ---
+@app.get("/")
+def health():
+    return "ok", 200
+
+# --- Email: send to BOTH business + customer ---
 def send_email(name, email, date, time, notes):
     SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY")
-    FROM_EMAIL = os.getenv("FROM_EMAIL")
-    TO_EMAIL = "camkin123@gmail.com"
+    FROM_EMAIL = os.getenv("FROM_EMAIL")                      # must be verified in SendGrid
+    COMPANY_EMAIL = os.getenv("COMPANY_EMAIL", "camkin123@gmail.com")
 
     subject = "New Appointment Submission"
-    body = f"""
-    A new appointment has been booked:
-
-    Name: {name}
-    Email: {email}
-    Date: {date}
-    Time: {time}
-    Notes: {notes}
-    """
+    body = (
+        "A new appointment has been booked:\n\n"
+        f"Name: {name}\nEmail: {email}\nDate: {date}\n"
+        f"Time: {time}\nNotes: {notes}\n"
+    )
 
     data = {
         "personalizations": [{
-            "to": [{"email": TO_EMAIL}],
+            "to": [{"email": COMPANY_EMAIL}, {"email": email}],
             "subject": subject
         }],
         "from": {"email": FROM_EMAIL},
-        "content": [{
-            "type": "text/plain",
-            "value": body
-        }]
+        "content": [{"type": "text/plain", "value": body}]
     }
 
-    response = requests.post(
+    r = requests.post(
         "https://api.sendgrid.com/v3/mail/send",
-        headers={
-            "Authorization": f"Bearer {SENDGRID_API_KEY}",
-            "Content-Type": "application/json"
-        },
+        headers={"Authorization": f"Bearer {SENDGRID_API_KEY}", "Content-Type": "application/json"},
         json=data
     )
+    if r.status_code != 202:
+        app.logger.error(f"SendGrid error {r.status_code}: {r.text}")
+    return r.status_code
 
-    print("SendGrid response:", response.status_code, response.text)
-    return response.status_code
+# --- Create table once at startup ---
+def init_db():
+    if not DB_URL:
+        app.logger.warning("DATABASE_URL not set; DB will fail on first use.")
+        return
+    with psycopg2.connect(DB_URL, sslmode="require") as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS appointments (
+                    id SERIAL PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    email TEXT NOT NULL,
+                    date TEXT NOT NULL,
+                    time TEXT NOT NULL,
+                    notes TEXT,
+                    created_at TIMESTAMPTZ DEFAULT NOW()
+                );
+            """)
+init_db()
 
-@app.route('/submit', methods=['POST'])
+@app.post("/submit")
 def submit_appointment():
     try:
-        data = request.json
+        data = request.get_json(silent=True) or {}
         name = data.get("name")
         customer_email = data.get("email")
         date = data.get("date")
-        time = data.get("time")
-        notes = data.get("notes")
-        timestamp = datetime.utcnow().isoformat()
+        time_ = data.get("time")
+        notes = data.get("notes", "")
 
-        # Connect to PostgreSQL
-        conn = psycopg2.connect(
-            dbname=os.getenv("POSTGRES_DB"),
-            user=os.getenv("POSTGRES_USER"),
-            password=os.getenv("POSTGRES_PASSWORD"),
-            host=os.getenv("POSTGRES_HOST"),
-            port=os.getenv("POSTGRES_PORT")
-        )
+        # basic validation
+        for k, v in {"name": name, "email": customer_email, "date": date, "time": time_}.items():
+            if not v:
+                return jsonify({"error": f"Missing field: {k}"}), 400
 
-        cursor = conn.cursor()
+        # insert appointment
+        with psycopg2.connect(DB_URL, sslmode="require") as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    INSERT INTO appointments (name, email, date, time, notes)
+                    VALUES (%s, %s, %s, %s, %s)
+                """, (name, customer_email, date, time_, notes))
 
-        # Create table if it doesn't exist
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS appointments (
-                id SERIAL PRIMARY KEY,
-                name TEXT,
-                email TEXT,
-                date TEXT,
-                time TEXT,
-                notes TEXT,
-                timestamp TEXT
-            )
-        ''')
+        # email business + customer
+        send_email(name, customer_email, date, time_, notes)
 
-        # Insert appointment
-        cursor.execute('''
-            INSERT INTO appointments (name, email, date, time, notes, timestamp)
-            VALUES (%s, %s, %s, %s, %s, %s)
-        ''', (name, customer_email, date, time, notes, timestamp))
-
-        conn.commit()
-        cursor.close()
-        conn.close()
-
-        # Send email to business only
-        send_email(name, customer_email, date, time, notes)
-
-        return jsonify({"message": "Appointment submitted successfully! See you soon!"})
+        return jsonify({"message": "Appointment submitted successfully! See you soon!"}), 200
 
     except Exception as e:
-        print("Error submitting appointment:", str(e))
+        app.logger.exception("Error submitting appointment")
         return jsonify({"error": "Internal server error"}), 500
-
-
