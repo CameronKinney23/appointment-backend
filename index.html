@@ -27,15 +27,16 @@
 <img src="Screenshot (702).png" alt="Appointment Form Interface" width="100%">
 
   
-  <h2>Database Design and Deployment</h2>
-  <p>Phase 3 focused on building and deploying a production-grade PostgreSQL database to support the Appointments system. I designed a scalable schema using SQLAlchemy models, defining fields for user input, timestamps, and status flags. This structure ensured data integrity and clean relationships between entities.</p>
+ <h2>Database Design and Deployment</h2>
+<p>Phase 3 focused on building and deploying a production-grade PostgreSQL database to support the Appointments system. I designed a scalable schema using SQLAlchemy models, defining fields for user input, timestamps, and status flags. This structure ensured data integrity and clean relationships between entities.</p>
 
-  <p>I deployed the database to Render and configured environment variables to securely manage credentials and connection strings. This allowed real-time appointment logging and retrieval from the frontend. I also implemented full CRUD operations—Create, Read, Update, Delete—through FastAPI endpoints, validating inputs and handling edge cases like duplicates and missing fields.</p>
+<p>I deployed the database to Render and configured environment variables to securely manage credentials and connection strings. This enabled real-time appointment logging and retrieval from the frontend. To validate backend functionality, I used Postman to test each endpoint—confirming that data flowed correctly, edge cases were handled, and responses were properly formatted.</p>
 
-  <p>To ensure reliability, I tested database interactions with isolated routes and unit tests, confirming that data persisted correctly and errors were handled gracefully. This phase demonstrated my ability to architect and deploy backend infrastructure that’s secure, scalable, and ready for production.</p>
+<p>I also implemented full CRUD operations—Create, Read, Update, Delete—through FastAPI endpoints, with built-in validation to prevent duplicates, enforce required fields, and maintain clean data. Once the site is live, every successful appointment submission triggers an automated email notification sent to my personal address (soon to be replaced with a company email), confirming the request and ensuring immediate visibility. This phase demonstrated my ability to architect and deploy backend infrastructure that’s secure, scalable, and production-ready.</p>
 
 <p><strong>Email Notification Proof:</strong></p>
-<img src="Screenshot (703).png" alt="Appointment Form Interface" width="100%">
+<img src="Screenshot (703).png" alt="Email Notification Confirmation" width="100%">
+
   
   <h2>Project Links</h2>
   <ul>
