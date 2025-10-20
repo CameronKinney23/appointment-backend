@@ -1,0 +1,591 @@
+{% comment %}
+  Appointments Form (client-side only)
+  - Two-column layout, card UI
+  - 30-minute time slots 10:00 AM → 9:00 PM, closed Sundays
+  - Client-side validation
+{% endcomment %}
+
+{%- style -%}
+  .section-{{ section.id }}-padding {
+    padding-top: {{ section.settings.padding_top }}px;
+    padding-bottom: {{ section.settings.padding_bottom }}px;
+  }
+
+  /* Page wrapper */
+  .appts {
+    max-width: 920px;
+    margin: 0 auto;
+  }
+  .appts__intro {
+    margin: .25rem 0 1.25rem;
+    opacity: .9;
+    font-size: 1.3rem;
+  }
+
+  /* Card shell styled to echo your mock */
+  .appts__card {
+    margin-top: 8px;
+    border-radius: 22px;
+    padding: 20px;
+    /* subtle gradient + shadow so it "floats" on dark theme */
+    background: radial-gradient(120% 120% at 100% 0%, rgba(120,120,255,.15) 0%, rgba(255,120,200,.10) 32%, rgba(255,255,255,.04) 100%), rgba(0,0,0,.35);
+    box-shadow:
+      0 2px 10px rgba(0,0,0,.25),
+      0 12px 30px rgba(0,0,0,.25);
+    backdrop-filter: blur(2px);
+  }
+
+  /* Grid groups (desktop two-up, mobile stacks) */
+  .appts__grid { display: grid; gap: 14px; }
+  .appts__row-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+  }
+  @media (max-width: 749px){
+    .appts__row-2 { grid-template-columns: 1fr; }
+  }
+
+ .appts .field__input { 
+  font-size: 1.3rem !important;
+  padding-top: 18px !important;
+  padding-bottom: 18px !important;
+  padding-left: 16px !important;
+  padding-right: 16px !important;
+  line-height: 1.3;
+}
+
+
+  .appts .field__label { 
+    pointer-events: none;
+    font-size: 1.3rem !important;
+  }
+  .appts .error {
+    display: none;
+    color: #b00020;
+    font-size: 1.2rem;
+    margin-top: 4px;
+  }
+
+  /* Date input placeholder styling */
+  .appts input[type="date"]::-webkit-datetime-edit {
+    color: transparent;
+  }
+  .appts input[type="date"]:focus::-webkit-datetime-edit,
+  .appts input[type="date"]:valid::-webkit-datetime-edit {
+    color: inherit;
+  }
+  .appts input[type="date"]::before {
+    content: attr(placeholder);
+    position: absolute;
+    color: rgba(255, 255, 255, 0.6);
+    pointer-events: none;
+    font-size: 1.3rem;
+  }
+  .appts input[type="date"]:focus::before,
+  .appts input[type="date"]:valid::before {
+    content: '';
+  }
+
+  /* Checkbox group */
+  .appts__group {
+    margin-top: 8px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: rgba(255,255,255,.04);
+  }
+  .appts__legend {
+    font-weight: 600;
+    margin-bottom: 6px;
+    display: block;
+    font-size: 1.3rem;
+  }
+  .appts__checks {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, max-content));
+    gap: 10px 16px;
+  }
+  .appts__checks label {
+    font-size: 1.3rem;
+    cursor: pointer;
+  }
+  .appts__checks input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+  }
+  @media (max-width: 749px){
+    .appts__checks { grid-template-columns: 1fr; }
+  }
+
+  .appts__actions { margin-top: 14px; }
+  .appts__actions button {
+    font-size: 1.3rem !important;
+    padding: 16px 32px !important;
+  }
+  .appts__success {
+    display: none;
+    margin-top: 16px;
+    padding: 12px 14px;
+    border-radius: 10px;
+    background: rgba(0,0,0,.06);
+    font-size: 1.3rem;
+  }
+
+  /* Consent checkbox */
+  .appts .field label {
+    font-size: 1.3rem;
+    cursor: pointer;
+  }
+  .appts .field input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+    margin-right: 8px;
+  }
+
+  /* Honeypot — visually hidden */
+  .appts .hp {
+    position: absolute !important;
+    left: -9999px !important;
+    width: 1px; height: 1px;
+    overflow: hidden;
+  }
+{%- endstyle -%}
+
+<section class="section section-{{ section.id }}-padding color-{{ section.settings.color_scheme }}">
+  <div class="page-width">
+    <div class="appts">
+      
+
+      <div class="appts__card">
+        <form id="appointmentsForm" method="POST" action="#">
+          <div class="appts__grid">
+
+            
+<!-- First/Last -->
+<div class="appts__row-2">
+  <div class="field" style="margin-bottom: 12px;">
+    <label
+      class="field__label"
+      for="ap-first-{{ section.id }}"
+      style="margin-bottom: 6px; display: block !important; position: static !important; opacity: 1 !important; font-weight: normal; font-size: 1rem; color: #333;"
+    >
+      First name *
+    </label>
+    <input
+      class="field__input"
+      id="ap-first-{{ section.id }}"
+      name="first_name"
+      type="text"
+      required
+      style="background-color: #fff !important; color: #000; border: 1px solid #ccc; border-radius: 4px; padding: 14px 12px; font-size: 1rem; line-height: 1.3; box-sizing: border-box;"
+    >
+    <p class="error" data-error-for="first_name"></p>
+  </div>
+
+  <div class="field" style="margin-bottom: 12px;">
+    <label
+      class="field__label"
+      for="ap-last-{{ section.id }}"
+      style="margin-bottom: 6px; display: block !important; position: static !important; opacity: 1 !important; font-weight: normal; font-size: 1rem; color: #333;"
+    >
+      Last name *
+    </label>
+    <input
+      class="field__input"
+      id="ap-last-{{ section.id }}"
+      name="last_name"
+      type="text"
+      required
+      style="background-color: #fff !important; color: #000; border: 1px solid #ccc; border-radius: 4px; padding: 14px 12px; font-size: 1rem; line-height: 1.3; box-sizing: border-box;"
+    >
+    <p class="error" data-error-for="last_name"></p>
+  </div>
+</div>
+
+<!-- Contact: Email / Phone (require at least one) -->
+<div class="appts__row-2" style="display: flex; gap: 16px; flex-wrap: wrap;">
+  <div class="field" style="flex: 1; min-width: 240px;">
+    <label
+      class="field__label"
+      for="ap-email-{{ section.id }}"
+      style="margin-bottom: 6px; display: block !important; position: static !important; opacity: 1 !important; font-weight: normal; font-size: 1rem; color: #333;"
+    >
+      Email
+    </label>
+    <input
+      class="field__input"
+      id="ap-email-{{ section.id }}"
+      name="email"
+      type="email"
+      inputmode="email"
+      style="width: 100%; background: #ffffff !important; background-color: #ffffff !important; color: #000 !important; border: 1px solid #ccc !important; border-radius: 4px; padding: 14px 12px; font-size: 1rem; line-height: 1.3; box-sizing: border-box; appearance: none; -webkit-appearance: none; -moz-appearance: none;"
+    >
+    <p class="error" data-error-for="email"></p>
+  </div>
+
+  <div class="field" style="flex: 1; min-width: 240px;">
+    <label
+      class="field__label"
+      for="ap-phone-{{ section.id }}"
+      style="margin-bottom: 6px; display: block !important; position: static !important; opacity: 1 !important; font-weight: normal; font-size: 1rem; color: #333;"
+    >
+      Phone (optional)
+    </label>
+    <input
+      class="field__input"
+      id="ap-phone-{{ section.id }}"
+      name="phone"
+      type="tel"
+      inputmode="tel"
+      style="width: 100%; background: #ffffff !important; background-color: #ffffff !important; color: #000 !important; border: 1px solid #ccc !important; border-radius: 4px; padding: 14px 12px; font-size: 1rem; line-height: 1.3; box-sizing: border-box; appearance: none; -webkit-appearance: none; -moz-appearance: none;"
+    >
+    <p class="error" data-error-for="phone"></p>
+  </div>
+</div>
+
+<!-- Notes -->
+<div class="field">
+  <textarea
+    class="field__input"
+    id="ap-notes-{{ section.id }}"
+    name="notes"
+    rows="2"
+    style="min-height: 66px; max-height: 66px; padding-top: 2em; padding-right: 10px; padding-bottom: 10px; padding-left: 10px; line-height: 1.6; resize: none; overflow-y: auto;"
+    placeholder="List items, conditions, or any special notes here"
+    oninput="
+      const lines = this.value.split('\n');
+      if (lines.length > 2) {
+        this.value = lines.slice(0, 2).join('\n');
+      }
+    "
+  ></textarea>
+  <label class="field__label" for="ap-notes-{{ section.id }}">
+    Give us a brief, descriptive summary of what you are bringing in
+  </label>
+  <p class="error" data-error-for="notes"></p>
+</div>
+
+
+<!-- Date / Time -->
+<div class="appts__row-2" style="display: flex; gap: 16px; flex-wrap: wrap;">
+  <!-- Preferred Date -->
+  <div class="field" style="flex: 1; min-width: 240px;">
+    <label
+      class="field__label"
+      for="preferred_date"
+      style="margin-bottom: 6px; display: block !important; position: static !important; opacity: 1 !important; font-weight: normal; font-size: 1rem; color: #333;"
+    >
+      Preferred date *
+    </label>
+    <input
+  class="field__input"
+  id="preferred_date"
+  name="date"
+  type="date"
+  required
+  style="width:100%;height:46px;border:1px solid #ccc;border-radius:4px;padding:0 12px;background:#fff;color:#000;font-size:1rem;line-height:46px;box-sizing:border-box;"
+>
+    <p class="error" data-error-for="date" style="margin-top: 4px; font-size: 12px; color: red;"></p>
+  </div>
+
+  <!-- Preferred Time -->
+  <div class="field" style="flex: 1; min-width: 240px;">
+    <label
+      class="field__label"
+      for="preferred_time"
+      style="margin-bottom: 6px; display: block !important; position: static !important; opacity: 1 !important; font-weight: normal; font-size: 1rem; color: #333;"
+    >
+      Preferred time *
+    </label>
+    <select
+      class="field__input"
+      id="preferred_time"
+      name="time"
+      required
+      style="width: 100%; background: #ffffff !important; color: #000 !important; border: 1px solid #ccc !important; border-radius: 4px; padding: 14px 12px; font-size: 1rem; line-height: 1.3; box-sizing: border-box; appearance: none; -webkit-appearance: none; -moz-appearance: none;"
+    >
+      <option value="">Select a time</option>
+    </select>
+    <p class="error" data-error-for="time" style="margin-top: 4px; font-size: 12px; color: red;"></p>
+  </div>
+</div>
+            <!-- What are you bringing? -->
+            <fieldset class="appts__group">
+              <legend class="appts__legend">What are you bringing? *</legend>
+              <div class="appts__checks">
+                <label><input type="checkbox" name="items[]" value="raw"> Raw cards</label>
+                <label><input type="checkbox" name="items[]" value="sealed"> Sealed product</label>
+                <label><input type="checkbox" name="items[]" value="graded"> Graded slabs</label>
+              </div>
+              <p class="error" data-error-for="items"></p>
+            </fieldset>
+
+            {% if section.settings.enable_consent %}
+              <div class="field" style="margin-top:8px;">
+                <label>
+                  <input type="checkbox" name="consent" id="ap-consent-{{ section.id }}" required>
+                  I agree to be contacted about my appointment request. *
+                </label>
+                <p class="error" data-error-for="consent"></p>
+              </div>
+            {% endif %}
+
+            <!-- Honeypot -->
+            <input type="text" name="website" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true">
+
+            <div class="appts__actions">
+              <button class="button button--primary" type="submit">
+                {{ section.settings.submit_label }}
+              </button>
+            </div>
+
+            <div id="appointmentsSuccess-{{ section.id }}" class="appts__success" role="status" aria-live="polite">
+              {{ section.settings.success_message }}
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+(() => {
+  // ---------- Config ----------
+  const OPEN_HOUR = 10;           // 10:00
+  const CLOSE_HOUR = 22;          // 22:00 (last slot shown will be 21:30)
+  const SLOT_MINUTES = 30;
+  const CLOSED_WEEKDAYS = [];     // [] = open every day; [0] would close Sundays
+  const MINIMUM_LEAD_MIN = 30;    // same-day buffer (minutes)
+
+  // ---------- DOM ----------
+  const form = document.getElementById('appointmentsForm');
+  const BACKEND_URL = "https://appointment-backend-al9v.onrender.com/submit";
+  if (!form) return;
+
+  const successEl  = document.getElementById('appointmentsSuccess-{{ section.id }}');
+  const dateInput  = document.getElementById('preferred_date');
+  const timeSelect = document.getElementById('preferred_time');
+  if (!dateInput || !timeSelect) return;
+
+  // ---------- Helpers ----------
+  const pad2 = n => String(n).padStart(2, '0');
+
+  // Robust date construction in local time (avoids TZ shifts)
+  function parseYMD(yyyyMmDd) {
+    if (!yyyyMmDd) return null;
+    const parts = yyyyMmDd.split('-').map(Number);
+    if (parts.length !== 3 || parts.some(Number.isNaN)) return null;
+    const [y, m, d] = parts;
+    return new Date(y, m - 1, d, 0, 0, 0, 0);
+  }
+
+  const fmtISO = (d) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+
+  function toLabel(h, m) {
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    const h12  = ((h + 11) % 12) + 1;
+    return `${h12}:${pad2(m)} ${ampm}`;
+  }
+
+  function minutesSinceMidnight(h, m) {
+    return h * 60 + m;
+  }
+
+  function isSameDay(a, b) {
+    return a && b && a.getFullYear() === b.getFullYear()
+      && a.getMonth() === b.getMonth()
+      && a.getDate() === b.getDate();
+  }
+
+  function setSelectDisabled(message) {
+    timeSelect.innerHTML = '';
+    const opt = new Option(message, '', true, true);
+    opt.disabled = true;
+    timeSelect.appendChild(opt);
+    timeSelect.disabled = true;
+  }
+
+  // Generate all slots [10:00, 10:30, ..., 21:30]
+  function buildAllSlots() {
+    const slots = [];
+    for (let mins = OPEN_HOUR * 60; mins < CLOSE_HOUR * 60; mins += SLOT_MINUTES) {
+      const h = Math.floor(mins / 60);
+      const m = mins % 60;
+      slots.push({ h, m, label: toLabel(h, m) });
+    }
+    return slots;
+  }
+
+  // ---------- Init ----------
+  const today = new Date();
+  dateInput.min = fmtISO(today);
+  if (!dateInput.value) dateInput.value = fmtISO(today);
+
+  dateInput.addEventListener('input', rebuildTimes);
+  rebuildTimes();
+
+  // ---------- Core ----------
+  function rebuildTimes() {
+    // Reset select
+    timeSelect.disabled = false;
+    timeSelect.innerHTML = '<option value="">Select a time</option>';
+
+    const selected = parseYMD(dateInput.value);
+    if (!selected) {
+      setSelectDisabled('Select a date first');
+      return;
+    }
+
+    // Closed day check
+    if (CLOSED_WEEKDAYS.includes(selected.getDay())) {
+      setSelectDisabled('Closed this day');
+      return;
+    }
+
+    // Build canonical chronological list
+    const allSlots = buildAllSlots();
+
+    // Same-day lead-time filter
+    let available = allSlots;
+    if (isSameDay(selected, today)) {
+      const minTs = new Date(today.getTime() + MINIMUM_LEAD_MIN * 60000);
+      const minCutoff = minutesSinceMidnight(minTs.getHours(), Math.ceil(minTs.getMinutes() / SLOT_MINUTES) * SLOT_MINUTES);
+      available = allSlots.filter(s => minutesSinceMidnight(s.h, s.m) >= minCutoff);
+    }
+
+    if (available.length === 0) {
+      setSelectDisabled('No times available — pick another date');
+      return;
+    }
+
+    // Render options (already chronological)
+    const frag = document.createDocumentFragment();
+    for (const s of available) {
+      frag.appendChild(new Option(s.label, s.label));
+    }
+    timeSelect.appendChild(frag);
+  }
+
+  // ---------- Validation ----------
+  function $err(name) {
+    return form.querySelector(`[data-error-for="${name}"]`);
+  }
+  function showError(name, msg) {
+    const el = $err(name);
+    if (el) { el.textContent = msg || ''; el.style.display = msg ? 'block' : 'none'; }
+  }
+  function clearErrors() {
+    form.querySelectorAll('[data-error-for]').forEach(el => { el.textContent = ''; el.style.display = 'none'; });
+  }
+
+// ---------- Submit ----------
+form.addEventListener('submit', (e) => {
+  e.preventDefault();
+  clearErrors();
+
+  // Honeypot
+  if (form.website && form.website.value) return;
+
+  let valid = true;
+
+  const first = (form.first_name?.value || '').trim();
+  if (!first) { showError('first_name', 'Please enter your first name.'); valid = false; }
+
+  const last = (form.last_name?.value || '').trim();
+  if (!last) { showError('last_name', 'Please enter your last name.'); valid = false; }
+
+  const email = (form.email?.value || '').trim();
+  const phone = (form.phone?.value || '').trim();
+  const emailOk = !email || /^\S+@\S+\.\S+$/.test(email);
+  if (email && !emailOk) { showError('email', 'Enter a valid email.'); valid = false; }
+  if (!email && !phone) {
+    showError('email', 'Provide email or phone.');
+    showError('phone', 'Provide email or phone.');
+    valid = false;
+  }
+
+  if (!form.date?.value) { showError('date', 'Select a preferred date.'); valid = false; }
+  if (!form.time?.value) { showError('time', 'Select a preferred time.'); valid = false; }
+
+  const checked = form.querySelectorAll('input[name="items[]"]:checked').length;
+  if (!checked) { showError('items', 'Pick at least one option.'); valid = false; }
+
+  {% if section.settings.enable_consent %}
+  if (!form.consent?.checked) {
+    showError('consent', 'Please agree so we can contact you.');
+    valid = false;
+  }
+  {% endif %}
+
+  if (!valid) return;
+
+  // ---------- Send to backend ----------
+  const payload = {
+    name: `${first} ${last}`,
+    email,
+    date: form.date.value,
+    time: form.time.value,
+    notes: `Phone: ${phone} | Items selected: ${Array.from(form.querySelectorAll('input[name="items[]"]:checked')).map(i => i.value).join(', ')} | ${form.notes?.value || ''}`
+  };
+
+  console.log("🧩 Sending appointment data to backend:", payload);
+
+  fetch(BACKEND_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  })
+  .then(res => res.json())
+  .then(result => {
+    if (result.message && successEl) {
+      successEl.innerHTML = `<strong>${result.message}</strong><br><em>Please check your Spam folder for confirmation email.</em>`;
+      successEl.style.display = 'block';
+    } else {
+      console.error("Backend error:", result.error);
+      if (successEl) {
+        successEl.style.display = 'block';
+        successEl.textContent = "There was an issue submitting your appointment.";
+      }
+    }
+    form.reset();
+    rebuildTimes();
+  })
+  .catch(err => {
+    console.error("Submission failed:", err);
+    if (successEl) {
+      successEl.style.display = 'block';
+      successEl.textContent = "There was an error sending your request. Please try again.";
+    }
+  });
+
+  // a11y focus
+  if (successEl) {
+    successEl.setAttribute('tabindex', '-1');
+    successEl.focus?.({ preventScroll: true });
+    successEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+});
+})();
+</script>
+
+
+{% schema %}
+{
+  "name": "Appointments form",
+  "class": "section",
+  "settings": [
+    { "type": "text", "id": "heading", "label": "Heading", "default": "Appointments" },
+    { "type": "text", "id": "intro", "label": "Intro text", "default": "Tell us what you're bringing and your preferred time." },
+    { "type": "checkbox", "id": "enable_consent", "label": "Require contact consent", "default": true },
+    { "type": "text", "id": "submit_label", "label": "Submit button label", "default": "Request appointment" },
+    { "type": "text", "id": "success_message", "label": "Success message", "default": "Thanks! We'll get back to you shortly to confirm." },
+    { "type": "color_scheme", "id": "color_scheme", "label": "Color scheme", "default": "background-1" },
+    { "type": "range", "id": "padding_top", "min": 0, "max": 100, "step": 4, "unit": "px", "label": "Padding top", "default": 36 },
+    { "type": "range", "id": "padding_bottom", "min": 0, "max": 100, "step": 4, "unit": "px", "label": "Padding bottom", "default": 36 }
+  ],
+  "presets": [{ "name": "Appointments form" }]
+}
+{% endschema %}
